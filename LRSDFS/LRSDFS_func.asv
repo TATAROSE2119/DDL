@@ -1,0 +1,68 @@
+function W1 = update_W1(X, W1, W2, Y1, Y2, M, N, a)
+    numerator = X' * X * Y1';
+    term1 = X' * X * W1 * Y1 * Y1';
+    term2 = X' * X * W2 * Y2 * Y1';
+    term3 = a * X' * M * N';
+    denominator = term1 + term2 + term3;
+    W1(denominator > 1e-8) = W1(denominator > 1e-8) .* numerator(denominator > 1e-8) ./ denominator(denominator > 1e-8);
+end
+
+function W2 = update_W2(X, W1, W2, Y1, Y2, i_d, i_c, b)
+    numerator = X' * X * Y2';
+    term1 = X' * X * W1 * Y1 * Y2';
+    term2 = X' * X * W2 * Y2 * Y2';
+    term3 = b * X' * (i_d * i_c') * Y2';
+    denominator = term1 + term2 + term3;
+    W2(denominator > 1e-8) = W2(denominator > 1e-8) .* numerator(denominator > 1e-8) ./ denominator(denominator > 1e-8);
+end
+
+function Y1 = update_Y1(X, W1, W2, Y1, Y2, U1, c, e)
+    numerator = W1' * X' * X + 2 * e * Y1;
+    term1 = W1' * X' * X * W1 * Y1;
+    term2 = W1' * X' * X * W2 * Y2;
+    term3 = c * U1 * Y1;
+    term4 = 2 * e * Y1 * Y1' * Y1;
+    denominator = term1 + term2 + term3 + term4;
+    Y1(denominator > 1e-8) = Y1(denominator > 1e-8) .* numerator(denominator > 1e-8) ./ denominator(denominator > 1e-8);
+end
+
+function Y2 = update_Y2(X, W1, W2, Y1, Y2, U2, i_d, i_c, b, d, f)
+    numerator = W2' * X' * X + 2 * f * Y2;
+    term1 = W2' * X' * X * W1 * Y1;
+    term2 = W2' * X' * X * W2 * Y2;
+    term3 = b * W2' * X' * (i_d * i_c);
+    term4 = d * U2 * Y2;
+    term5 = 2 * f * Y2 * Y2' * Y2;
+    denominator = term1 + term2 + term3 + term4 + term5;
+    Y2(denominator > 1e-8) = Y2(denominator > 1e-8) .* numerator(denominator > 1e-8) ./ denominator(denominator > 1e-8);
+end
+
+function [U1, U2] = update_U(Y1, Y2)
+    U1 = diag(1 ./ (2 * vecnorm(Y1, 2, 2)));
+    U2 = diag(1 ./ (2 * vecnorm(Y2, 2, 2)));
+    U1(isinf(U1)) = 0;
+    U2(isinf(U2)) = 0;
+end
+
+function [T2_stats, SPE_stats] = calculate_statistics(X_new, D1, D2, a, b)
+    n_samples = size(X_new, 2);
+    T2_stats = zeros(n_samples, 1);
+    SPE_stats = zeros(n_samples, 1);
+    
+    for i = 1:n_samples
+        x = X_new(:, i);
+        Y1_hat = pinv(D1' * D1) * D1' * x;
+        Y2_hat = pinv(D2' * D2) * D2' * x;
+        X_new_hat = a * D1 * Y1_hat + b * D2 * Y2_hat;
+        T2_stats(i) = a * (Y1_hat' * Y1_hat) + b * (Y2_hat' * Y2_hat);
+        SPE_stats(i) = (x - X_new_hat)' * (x - X_new_hat);
+    end
+end
+
+function RelErr = calculate_relerr(W1_k, W1_k1, Y1_k, Y1_k1, W2_k, W2_k1, Y2_k, Y2_k1)
+    relerr_W1 = norm(W1_k1 - W1_k, 'fro') / (norm(W1_k, 'fro') + 1);
+    relerr_Y1 = norm(Y1_k1 - Y1_k, 'fro') / (norm(Y1_k, 'fro') + 1);
+    relerr_W2 = norm(W2_k1 - W2_k, 'fro') / (norm(W2_k, 'fro') + 1);
+    relerr_Y2 = norm(Y2_k1 - Y2_k, 'fro') / (norm(Y2_k, 'fro') + 1);
+    RelErr = max([relerr_W1, relerr_Y1, relerr_W2, relerr_Y2]);
+end
