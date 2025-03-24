@@ -20,6 +20,6 @@ disp('转换为带 % 的表格：');
 disp(resultsTable);
 
 % 保存到新的 CSV 文件
-outputFilePath = 'Documents/MATLAB/LRSDFS/all_results_percent_with_symbol.csv';
+outputFilePath = 'all_results_percent_with_symbol.csv';
 writetable(resultsTable, outputFilePath);
 disp(['结果已保存到: ' outputFilePath]);

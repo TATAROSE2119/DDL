@@ -1,24 +1,39 @@
+close("all");clc;clear
+
 % 获取当前工作目录
 currentDir = pwd;
 
 % 创建保存结果的文件夹，确保在当前项目目录下
-if ~exist(fullfile(currentDir, 'Documents/MATLAB/LRSDFS/plts/convergence_error'), 'dir')
-    mkdir(fullfile(currentDir, 'Documents/MATLAB/LRSDFS/plts/convergence_error'));
+
+if ~exist(fullfile(currentDir, 'plts/statistics'), 'dir')
+    mkdir(fullfile(currentDir, 'plts/statistics'));
 end
-if ~exist(fullfile(currentDir, 'Documents/MATLAB/LRSDFS/plts/statistics'), 'dir')
-    mkdir(fullfile(currentDir, 'Documents/MATLAB/LRSDFS/plts/statistics'));
+if ~exist(fullfile(currentDir, 'plts/dictionary'), 'dir')
+    mkdir(fullfile(currentDir, 'plts/dictionary'));
 end
-if ~exist(fullfile(currentDir, 'Documents/MATLAB/LRSDFS/plts/dictionary'), 'dir')
-    mkdir(fullfile(currentDir, 'Documents/MATLAB/LRSDFS/plts/dictionary'));
-end
-if ~exist(fullfile(currentDir, 'Documents/MATLAB/LRSDFS/convergence_error'), 'dir')
-    mkdir(fullfile(currentDir, 'Documents/MATLAB/LRSDFS/convergence_error'));
+if ~exist(fullfile(currentDir, 'convergence_error'), 'dir')
+    mkdir(fullfile(currentDir, 'convergence_error'));
 end
 
 % 初始化参数
-k1 = 10; % 低秩
-k2 = 21; % 稀疏
-max_iter = 500;  % 最大迭代次数
+rng(42);  % 设置种子为42
+
+
+k1 =51; % 低秩
+k2 = 50; % 稀疏
+
+
+a=1e-3;
+b=1e-3;
+c=1e-3;
+d=1e-3;
+e=1e-3;
+f=1e-5;
+p=0.1;%Low_rank
+q=1-p;%S
+
+
+max_iter = 10;  % 最大迭代次数
 tol = 1e-3;     % 收敛阈值
 train_file = 'TE_data/test_data/d00_te.dat';
 train_data = load(train_file);
@@ -59,10 +74,10 @@ results = [];
         prev_Y2 = Y2;
         
         % 调用 MATLAB 版的函数更新 W1, W2, Y1, Y2, U1, U2
-        W1 = update_W1(train_data, W1, W2, Y1, Y2, M, N, 0.3);
-        W2 = update_W2(train_data, W1, W2, Y1, Y2, i_d, i_c, 0.1);
-        Y1 = update_Y1(train_data, W1, W2, Y1, Y2, U1, 1e5, 10);
-        Y2 = update_Y2(train_data, W1, W2, Y1, Y2, U2, i_d, i_c, 0.3, 1e5, 10);
+        W1 = update_W1(train_data, W1, W2, Y1, Y2, M, N, a);
+        W2 = update_W2(train_data, W1, W2, Y1, Y2, i_d, i_c, b);
+        Y1 = update_Y1(train_data, W1, W2, Y1, Y2, U1, 1e5, 10);%c,e
+        Y2 = update_Y2(train_data, W1, W2, Y1, Y2, U2, i_d, i_c, 0.3, 1e5, 10);%b,d,f
         [U1, U2] = update_U(Y1, Y2);
         
         % 计算收敛误差
@@ -71,7 +86,7 @@ results = [];
         Y1_norms_e = [Y1_norms_e; norm(Y1 - prev_Y1)];
         Y2_norms_e = [Y2_norms_e; norm(Y2 - prev_Y2)];
         
-        if calculate_relerr(W1, prev_W1, Y1, prev_Y1, W2, prev_W2, Y2, prev_Y2) < tol
+        if calculate_relerr(W1, prev_W1, Y1, prev_Y1, W2, prev_W2, Y2, prev_Y2,iteration,max_iter) < tol
             disp('Convergence reached.');
             break;
         end
@@ -98,8 +113,8 @@ for i = 1:21
     
     
     % 计算统计量
-    [T2_statistics, SPE_statistics] = calculate_statistics(test_data, D1, D2, 0.9,0.1 );
-    [T2_train, SPE_train] = calculate_statistics(train_data, D1, D2, 0.9,0.1);
+    [T2_statistics, SPE_statistics] = calculate_statistics(test_data, D1, D2, p,q );
+    [T2_train, SPE_train] = calculate_statistics(train_data, D1, D2, p,q);
     
     % 计算控制限
     alpha = 0.99;
@@ -121,33 +136,30 @@ for i = 1:21
     
     % 绘图并保存（不展示图形窗口）
     fig = figure('Visible', 'off'); % 创建不可见的图形窗口
+    
     subplot(2,1,1);
     plot(T2_statistics);
     hold on;
     yline(T2_limit, 'r--');
-    title(sprintf('T2 Statistics d%02d', i));
-
+    title(sprintf('T^2')); % 调整标题位置
+    
     subplot(2,1,2);
     plot(SPE_statistics);
     hold on;
     yline(SPE_limit, 'r--');
-    title(sprintf('SPE Statistics d%02d', i));
+    title(sprintf('SPE')); % 调整标题位置
+
     
-    % 确保保存路径存在
-    outputDir = 'Documents/MATLAB/LRSDFS/plts/statistics';
-    if ~exist(outputDir, 'dir')
-        mkdir(outputDir);
-    end
     
     % 保存为 SVG 文件
-    saveas(fig, sprintf('Documents/MATLAB/LRSDFS/plts/statistics/d%02d.svg', i));
+    saveas(fig, sprintf('plts/statistics/d%02d.svg', i));
     
     % 关闭图形窗口（可选，释放资源）
     close(fig);
 end
 
 % 保存结果到 CSV
-fid = fopen('Documents/MATLAB/LRSDFS/all_results.csv', 'w');
+fid = fopen('all_results.csv', 'w');
 fprintf(fid, 'file,T2_FDR,SPE_FDR,T2_FAR,SPE_FAR\n');
 
 % 写入原始数据
@@ -220,7 +232,7 @@ function [U1, U2] = update_U(Y1, Y2)
     U2(isinf(U2)) = 0;
 end
 
-function [T2_stats, SPE_stats] = calculate_statistics(X_new, D1, D2, a, b)
+function [T2_stats, SPE_stats] = calculate_statistics(X_new, D1, D2, p, q)
     n_samples = size(X_new, 2);
     T2_stats = zeros(n_samples, 1);
     SPE_stats = zeros(n_samples, 1);
@@ -229,17 +241,94 @@ function [T2_stats, SPE_stats] = calculate_statistics(X_new, D1, D2, a, b)
         x = X_new(:, i);
         Y1_hat = pinv(D1' * D1) * D1' * x;
         Y2_hat = pinv(D2' * D2) * D2' * x;
-        X_new_hat = a * D1 * Y1_hat + b * D2 * Y2_hat;
-        T2_stats(i) = a * (Y1_hat' * Y1_hat) + b * (Y2_hat' * Y2_hat);
+        X_new_hat = p * D1 * Y1_hat + q * D2 * Y2_hat;
+        T2_stats(i) = p * (Y1_hat' * Y1_hat) + q * (Y2_hat' * Y2_hat);
         SPE_stats(i) = (x - X_new_hat)' * (x - X_new_hat);
     end
 end
 
-function RelErr = calculate_relerr(W1_k, W1_k1, Y1_k, Y1_k1, W2_k, W2_k1, Y2_k, Y2_k1)
+function RelErr = calculate_relerr(W1_k, W1_k1, Y1_k, Y1_k1, W2_k, W2_k1, Y2_k, Y2_k1, iter, maxIter)
+    % 计算相对误差
     relerr_W1 = norm(W1_k1 - W1_k, 'fro') / (norm(W1_k, 'fro') + 1);
     relerr_Y1 = norm(Y1_k1 - Y1_k, 'fro') / (norm(Y1_k, 'fro') + 1);
     relerr_W2 = norm(W2_k1 - W2_k, 'fro') / (norm(W2_k, 'fro') + 1);
     relerr_Y2 = norm(Y2_k1 - Y2_k, 'fro') / (norm(Y2_k, 'fro') + 1);
     RelErr = max([relerr_W1, relerr_Y1, relerr_W2, relerr_Y2]);
+    
+    % 持久变量，用于存储每次迭代的误差
+    persistent relErrHistory_W1 relErrHistory_Y1 relErrHistory_W2 relErrHistory_Y2;
+    if isempty(relErrHistory_W1)
+        relErrHistory_W1 = zeros(maxIter, 1); % 初始化 W1 误差历史数组
+        relErrHistory_Y1 = zeros(maxIter, 1); % 初始化 Y1 误差历史数组
+        relErrHistory_W2 = zeros(maxIter, 1); % 初始化 W2 误差历史数组
+        relErrHistory_Y2 = zeros(maxIter, 1); % 初始化 Y2 误差历史数组
+    end
+    
+    % 记录当前迭代的误差
+    relErrHistory_W1(iter) = relerr_W1;
+    relErrHistory_Y1(iter) = relerr_Y1;
+    relErrHistory_W2(iter) = relerr_W2;
+    relErrHistory_Y2(iter) = relerr_Y2;
+    
+    % 如果是最后一次迭代，绘制并保存误差收敛曲线
+    if iter == maxIter
+       
+        fig = figure(1);
+        
+        % 子图 1：W1 的收敛曲线
+        subplot(2, 2, 1);
+        plot(1:maxIter, relErrHistory_W1, 'b-o', 'LineWidth', 2);
+        xlabel('Iteration');
+        ylabel('Relative Error');
+        title('Convergence of W_1');
+        grid on;
+        
+        % 子图 2：Y1 的收敛曲线
+        subplot(2, 2, 2);
+        plot(1:maxIter, relErrHistory_Y1, 'r-o', 'LineWidth', 2);
+        xlabel('Iteration');
+        ylabel('Relative Error');
+        title('Convergence of Y_1');
+        grid on;
+        
+        % 子图 3：W2 的收敛曲线
+        subplot(2, 2, 3);
+        plot(1:maxIter, relErrHistory_W2,'g-o', 'LineWidth', 2);
+        xlabel('Iteration');
+        ylabel('Relative Error');
+        title('Convergence of W_2');
+        grid on;
+        
+        % 子图 4：Y2 的收敛曲线
+        subplot(2, 2, 4);
+        plot(1:maxIter, relErrHistory_Y2, 'm-o', 'LineWidth', 2);
+        xlabel('Iteration');
+        ylabel('Relative Error');
+        title('Convergence of Y_2');
+        grid on;
+        
+        % 调整子图间距
+        set(gcf, 'Position', [100, 100, 800, 600]); % 设置图形窗口大小
+        sgtitle('Convergence of Relative Errors'); % 添加总标题（MATLAB 2018b 及以上版本支持）
+        
+        % 确保保存路径存在
+        outputDir = 'plts/convergence_error';
+        if ~exist(outputDir, 'dir')
+            mkdir(outputDir);
+        end
+        
+        % 保存为 SVG 文件
+        saveas(fig, fullfile(outputDir, 'convergence_error_subplots.svg'));
+        saveas(fig, fullfile(outputDir, 'convergence_error_subplots.png'));
+        close(fig);
+        
+        disp('误差收敛曲线已保存到 Documents/MATLAB/LRSDFS/plts/convergence_error/convergence_error_subplots.svg');
+        
+        % 清空历史数据（为下一次运行准备）
+        relErrHistory_W1 = [];
+        relErrHistory_Y1 = [];
+        relErrHistory_W2 = [];
+        relErrHistory_Y2 = [];
+    end
 end
 
