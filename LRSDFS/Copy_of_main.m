@@ -16,24 +16,24 @@ if ~exist(fullfile(currentDir, 'convergence_error'), 'dir')
 end
 
 % 初始化参数
-rng(42);  % 设置种子为42
+%rng(1);  % 设置种子为42
 
 
-k1 =51; % 低秩
-k2 = 50; % 稀疏
+k1 =30; % 低秩
+k2 =40; % 稀疏
 
 
-a=1e-3;
-b=1e-3;
-c=1e-3;
-d=1e-3;
-e=1e-3;
+a=10;
+b=10;
+c=1e3;
+d=1e3;
+e=1e-5;
 f=1e-5;
-p=0.1;%Low_rank
+p=1e-8;%Low_rank
 q=1-p;%S
 
 
-max_iter = 10;  % 最大迭代次数
+max_iter = 20;  % 最大迭代次数
 tol = 1e-3;     % 收敛阈值
 train_file = 'TE_data/test_data/d00_te.dat';
 train_data = load(train_file);
@@ -99,7 +99,7 @@ results = [];
 
 
 % 处理数据 d00 到 d21
-for i = 1:21
+for i = 10:10
     test_file = sprintf('TE_data/test_data/d%02d_te.dat', i);
     fprintf("Processing Train Data: %s, Test Data: %s\n", train_file, test_file);
     
@@ -141,13 +141,15 @@ for i = 1:21
     plot(T2_statistics);
     hold on;
     yline(T2_limit, 'r--');
-    title(sprintf('T^2')); % 调整标题位置
+    %title(sprintf('T^2')); % 调整标题位置
+    ylabel('T^2');
     
     subplot(2,1,2);
     plot(SPE_statistics);
     hold on;
     yline(SPE_limit, 'r--');
-    title(sprintf('SPE')); % 调整标题位置
+    %title(sprintf('SPE')); % 调整标题位置
+    ylabel('SPE');
 
     
     
